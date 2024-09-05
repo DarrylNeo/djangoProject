@@ -1,0 +1,101 @@
+<!-- image_detection/templates/image_detection/live_feed.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Image Detection with ml5.js</title>
+    <style>
+        #video {
+            width: 640px;
+            height: 480px;
+            background-color: black;
+        }
+        #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 640px;
+            height: 480px;
+            z-index: 1;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>Live Image Detection with ml5.js</h1>
+    <div style="position: relative;">
+        <video id="video" autoplay></video>
+        <canvas id="canvas"></canvas>
+    </div>
+
+    <!-- Include ml5.js library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ml5@0.10.0/dist/ml5.min.js"></script>
+
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const context = canvas.getContext('2d');
+
+        let objectDetector;
+        let objects = [];
+
+        // Access the device camera and stream to the video element
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(stream => {
+                video.srcObject = stream;
+                video.onloadedmetadata = () => {
+                    video.play();
+                    initializeObjectDetection();
+                };
+            })
+            .catch(err => {
+                console.error("Error accessing the camera: ", err);
+            });
+
+        // Initialize object detection using ml5.js
+        function initializeObjectDetection() {
+            objectDetector = ml5.objectDetector('cocossd', () => {
+                console.log('Model Loaded!');
+                detectObjects();
+            });
+        }
+
+        // Perform object detection on the video stream
+        function detectObjects() {
+            objectDetector.detect(video, (err, results) => {
+                if (err) {
+                    console.error(err);
+                    return;
+                }
+                objects = results;
+                drawObjects();
+                requestAnimationFrame(detectObjects);
+            });
+        }
+
+        // Draw detected objects on the canvas
+        function drawObjects() {
+            context.clearRect(0, 0, canvas.width, canvas.height);
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            objects.forEach(object => {
+                context.strokeStyle = 'red';
+                context.lineWidth = 2;
+                context.strokeRect(object.x, object.y, object.width, object.height);
+
+                context.font = '18px Arial';
+                context.fillStyle = 'red';
+                context.fillText(
+                    `${object.label} (${Math.round(object.confidence * 100)}%)`,
+                    object.x,
+                    object.y > 20 ? object.y - 10 : 10
+                );
+            });
+        }
+    </script>
+</body>
+</html>
+
+
